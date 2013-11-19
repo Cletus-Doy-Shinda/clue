@@ -7,14 +7,16 @@
 % 
 
 
-%% INCLUDE 'iolib.h'.
-
+% Message to alert user that the program as loaded to instructions
+% for the first thing they should do.
 :- write('Clue Solver loaded.'),nl,nl.
 :- write('Please type start. to begin the program and'),nl.
 :- write('then follow the instructions at each prompt.'),nl.
 :- write('Have Fun!'),nl,nl.
 
 
+% Entry point for the program. Will handle setting up players
+% and the turn order
 start :- 
 	write('Please enter in the players playing in the correct order of play.'),nl,
 	write('Each player should be seperated by a space. When all players have'),nl,
@@ -25,6 +27,9 @@ start :-
 	addPlayers(L),nl,
 	cardPrompt.
 
+
+% Prompts the user to enter in the player they are playing as and asks which
+% cards they hold in their hand.
 cardPrompt :-
 	write('Please enter the name of the player you are playing as.'),nl,
 	read_line_to_codes(user_input,PlayerName),
@@ -35,6 +40,7 @@ cardPrompt :-
 	atom_codes(C,String),
 	atomic_list_concat(L, ' ', C),
 	addOurCards(Code,L).
+
 
 % Weapons
 :- dynamic weapon/1.
@@ -109,7 +115,8 @@ suspect(professor_plum).
 accusation(X,Y,Z) :- suspect(X),location(Y),weapon(Z).
 
 
-% Wrapper function to initialize first player.
+% Wrapper function to initialize first player so we
+% can link the last player back to the first player.
 addPlayers([H | T]) :- addPlayersHelper(H,[H | T]).
 
 
@@ -121,7 +128,8 @@ addPlayersHelper(FP,[H, N | T]) :-
 	addPlayersHelper(FP,[N | T]).
 
 
-% Used to show the contents of the knowledge base at any point in time.
+% Used to show the contents of the knowledge base. Will show
+% the remaining weapons, locations and suspects.
 showKB :- listing(weapon),listing(location),listing(suspect).
 
 
@@ -133,7 +141,8 @@ suggestion(X,Y,Z) :-
 	assert(possibleLocation(Z)).
 
 
-% Used to add a fact representing a card a player has
+% Used to add a fact representing a card a player has. This is Used
+% when another player shows us a card.
 addCard(Player,Card) :-
 	assert(hasCard(Player,Card)),
 	removeFromKB(Card).
@@ -152,8 +161,8 @@ removeFromKB(Card) :- retract(weapon(Card)).
 removeFromKB(Card) :- retract(suspect(Card)).
 
 
-% Used to show all the cards a player has
-showCards(Player,Card) :- hasCard(Player,Card),removeFromKB(Card).
+% Used to show all the cards a player has that we know of.
+showCards(Player,Card) :- hasCard(Player,Card).
 
 
 % Used to determine when a player doesn't have a certain cards because
@@ -181,10 +190,3 @@ showedCard(Player,Suspect,Location,Weapon) :-
 % Used to determine who's turn it is next
 nextTurn(Player,X) :- whosTurn(Player,X).
 
-
-% Used to remove cards from the knowledge base when another
-% player makes an incorrect accusation.
-wrongAccusation(Suspect,Location,Weapon) :-
-	removeFromKB(Suspect),
-	removeFromKB(Location),
-	removeFromKB(Weapon).
