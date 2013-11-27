@@ -146,12 +146,12 @@ showKB :- listing(weapon),listing(location),listing(suspect).
 % and weapon which are not yet known about.
 suggestion([P, L, W]) :-
     findall(Acc, accusation(Acc), Suggs),
-    find(Suggs, [P, L, W]).
+    find(Suggs, [P, L2, W]).
 
 % Used by: suggestion
 % Find the first occurrance in a list of suggestions. This is used to match an
 % accusation to the form of a suggestion we want to make.
-find([X|_T], X) :- !.
+find([[P,L1,W]|_T], [P,L2,W]) :- !.
 find([_X|T], Y) :- find(T, Y).
 
 
