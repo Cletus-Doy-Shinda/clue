@@ -154,7 +154,6 @@ addCard(Player,Card) :-
 
 
 % Used to add the cards in our hand to the knowledge base
-%% addOurCards(Player,[]) :- retract(suspect(Player)).
 addOurCards(_,[]).
 addOurCards(Player,[H | T]) :- 
 	addCard(Player,H),
