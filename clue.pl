@@ -29,6 +29,7 @@ start :-
 	addPlayers(L),nl,
 	cardPrompt.
 
+
 % Used by: start
 % Prompts the user to enter in the player they are playing as and asks which
 % cards they hold in their hand.
@@ -54,49 +55,37 @@ cardPrompt :-
 % Weapons
 :- dynamic weapon/1.
 
-weapon(knife).
+weapon(lead_pipe).
 weapon(candlestick).
 weapon(revolver).
-weapon(rope).
-weapon(lead_pipe).
 weapon(wrench).
+weapon(rope).
+weapon(knife).
 
 
 % Locations
 :- dynamic location/1.
 
+location(study).
+location(hall).
+location(lounge).
 location(kitchen).
 location(ballroom).
 location(conservatory).
 location(billiard_room).
 location(library).
-location(study).
-location(hall).
-location(lounge).
 location(dining_room).
 
 
 % Suspects
 :- dynamic suspect/1.
 
-suspect(miss_scarlett).
-suspect(mrs_white).
-suspect(colonel_mustard).
 suspect(reverend_green).
 suspect(mrs_peacock).
 suspect(professor_plum).
-
-
-% Possible Locations
-:- dynamic possibleLocation/1.
-
-
-% Possible Weapons
-:- dynamic possibleWeapon/1.
-
-
-% Possible Suspects
-:- dynamic possibleSuspect/1.
+suspect(miss_scarlett).
+suspect(mrs_white).
+suspect(colonel_mustard).
 
 
 % Players currently playing
@@ -144,14 +133,15 @@ showKB :- listing(weapon),listing(location),listing(suspect).
 
 % Ask for a possible accusation (ie suggestion) involving some person, location,
 % and weapon which are not yet known about.
-suggestion([P, L, W]) :-
+suggestion([P, _, W]) :-
     findall(Acc, accusation(Acc), Suggs),
-    find(Suggs, [P, L2, W]).
+    find(Suggs, [P, _, W]).
+
 
 % Used by: suggestion
 % Find the first occurrance in a list of suggestions. This is used to match an
 % accusation to the form of a suggestion we want to make.
-find([[P,L1,W]|_T], [P,L2,W]) :- !.
+find([[P,_,W]|_T], [P,_,W]) :- !.
 find([_X|T], Y) :- find(T, Y).
 
 
@@ -159,24 +149,32 @@ find([_X|T], Y) :- find(T, Y).
 % when another player shows us a card.
 addCard(Player,Card) :-
 	assert(hasCard(Player,Card)),
-	removeFromKB(Card).
+	removeFromKB(Card),
+    removeFromMightHave(Card).
 
 
 % Used to add the cards in our hand to the knowledge base
-addOurCards(Player,[]) :- retract(suspect(Player)).
+%% addOurCards(Player,[]) :- retract(suspect(Player)).
+addOurCards(_,[]).
 addOurCards(Player,[H | T]) :- 
 	addCard(Player,H),
 	addOurCards(Player,T).
 
 
-% Used to remove a card from the knowledge base.
-removeFromKB(Card) :- retract(location(Card)).
-removeFromKB(Card) :- retract(weapon(Card)).
-removeFromKB(Card) :- retract(suspect(Card)).
+% Removes a card from the database
+removeFromKB(Card) :- retract(location(Card)), !.
+removeFromKB(Card) :- retract(weapon(Card)), !.
+removeFromKB(Card) :- retract(suspect(Card)), !.
+removeFromKB(_).
 
 
-% Used to show all the cards a player has that we know of.
-showCards(Player,Card) :- hasCard(Player,Card).
+% Used by: addCard
+% Removes ALL mightHaveCard facts when removing a card from the database.
+removeFromMightHave(Card) :-
+    ( retract(mightHaveCard(_,Card))
+        -> removeFromMightHave(Card)
+        ; true
+    ).
 
 
 % Used to determine when a player doesn't have a certain cards because they
@@ -195,15 +193,43 @@ couldntRefute(Player,Suspect,Location,Weapon) :-
 forceRetract(Clause) :- retract(Clause) ; true.
 
 
-% Used to add possible cards of a players hand. This occurs when
-% a player on the left shows a card to a player on their right.
-% Player variable refers to the player showing the card, while the
-% 3 card variables are those made by the suggestion. So we know
-% the player on the left has to have 1 of the 3 cards.
+% Used to add possible cards of a players hand. Checks first if there
+% is only 1 possible card they could have based on what's in the database
+% at the time and will only add the cards if they are still in play.
 showedCard(Player,Suspect,Location,Weapon) :-
-    assert(mightHaveCard(Player,Suspect)),
-    assert(mightHaveCard(Player,Location)),
-    assert(mightHaveCard(Player,Weapon)).
+    not(suspect(Suspect)),
+    not(location(Location)),
+    addCard(Player,Weapon).
+showedCard(Player,Suspect,Location,Weapon) :-
+    not(suspect(Suspect)),
+    not(weapon(Weapon)),
+    addCard(Player,Location).
+showedCard(Player,Suspect,Location,Weapon) :-
+    not(weapon(Weapon)),
+    not(location(Location)),
+    addCard(Player,Suspect).
+showedCard(Player,Suspect,Location,Weapon) :-
+    ( suspect(Suspect)
+        -> addMightHave(Player,Suspect)
+        ; true
+    ),
+    ( location(Location)
+        -> addMightHave(Player,Location)
+        ; true
+    ),
+    ( weapon(Weapon)
+        -> addMightHave(Player,Weapon)
+        ; true
+    ).
+
+
+% Used to add information about a cards another player might have. Only
+% adds the card if the fact doesn't already exist for that player.
+addMightHave(Player, Card) :-
+    ( not(mightHaveCard(Player,Card))
+        -> assert(mightHaveCard(Player,Card))
+        ; true
+    ).
 
 
 % Used to determine who's turn it is next.
@@ -257,6 +283,7 @@ checkLocationChange :-
     atom_codes(C, YN),
     handleLocationChange(C), !.
 
+
 % Used by: checkLocationChange.
 % The result of saying 'yes' to changing our location.
 handleLocationChange(yes) :-
@@ -268,6 +295,7 @@ handleLocationChange(yes) :-
     ;  atom_codes(L, String),
        assert(ourLocation(L))
     ).
+
 
 % Used by: checkLocationChange.
 % The result of saying 'no' to changing our location.
